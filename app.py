@@ -3,10 +3,13 @@ import socket
 import numpy as np
 import pandas as pd
 import pickle
+import base64
+import io
+import matplotlib.pyplot as plt
 from flask import Flask, request
 from sklearn.ensemble import RandomForestClassifier
 
-# Initialize Flask app
+
 app = Flask(__name__)
 
 MODEL_FILE = "model.pkl"
@@ -45,7 +48,7 @@ def home():
     return """
     <html>
     <head>
-        <title>AI Fraud Detection System</title>
+        <title>Secure Pay </title>
         <style>
             body {
                 font-family: 'Arial', sans-serif;
@@ -107,14 +110,12 @@ def home():
         </style>
     </head>
     <body>
-        <h1>AI Fraud Detection System</h1>
+        <h1> SECURE PAY </h1>
         <form action="/predict" method="post">
             <label for="amount">Amount:</label>
             <input type="number" id="amount" name="amount" required>
-
             <label for="transaction_time">Transaction Time (0-24):</label>
             <input type="number" id="transaction_time" name="transaction_time" min="0" max="24" required>
-
             <label for="country">Country:</label>
             <select id="country" name="country" required>
                 <option value="UAE">UAE</option>
@@ -123,10 +124,8 @@ def home():
                 <option value="India">India</option>
                 <option value="Nigeria">Nigeria</option>
             </select>
-
             <label for="frequency">Frequency:</label>
             <input type="number" id="frequency" name="frequency" required>
-
             <input type="submit" value="Check Fraud">
         </form>
         <div class="footer">
@@ -159,10 +158,31 @@ def predict():
         probability = model.predict_proba(features)[0][1]
 
         if prediction == 1:
-            result = "⚠️ Fraudulent Transaction Detected!"
+            result_text = "⚠️ Fraudulent Transaction Detected!"
         else:
-            result = "✅ Transaction is Safe."
+            result_text = "✅ Transaction is Safe."
 
+        
+        plt.figure(figsize=(6, 4))
+        labels = ['Prediction', 'Fraud Probability']
+        values = [prediction, probability]
+        colors = ['#e74c3c' if prediction == 1 else '#27ae60', '#3498db']
+
+        plt.bar(labels, values, color=colors)
+        plt.ylim(0, 1)
+        plt.ylabel('Values')
+        plt.title('Prediction and Fraud Probability')
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.tight_layout()
+
+        
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png')
+        buf.seek(0)
+        image_base64 = base64.b64encode(buf.read()).decode('utf-8')
+        plt.close()
+
+        
         return f"""
         <html>
         <head>
@@ -191,6 +211,13 @@ def predict():
                 p {{
                     font-size: 18px;
                 }}
+                img {{
+                    margin-top: 20px;
+                    max-width: 100%;
+                    height: auto;
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                }}
                 a {{
                     display: inline-block;
                     margin-top: 20px;
@@ -208,9 +235,10 @@ def predict():
         </head>
         <body>
             <div class="container">
-                <h2>{result}</h2>
+                <h2>{result_text}</h2>
                 <p><strong>Country Selected:</strong> {country}</p>
                 <p><strong>Fraud Probability:</strong> {probability:.2f}</p>
+                <img src="data:image/png;base64,{image_base64}" alt="Prediction Graph"/>
                 <a href="/">Check Another Transaction</a>
             </div>
         </body>
